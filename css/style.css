@@ -1,0 +1,39 @@
+.module-music img {
+	border: 1px solid #3e4452;
+
+	min-width: 150px;
+	min-height: 150px;
+
+	max-width: 60%;
+
+	margin: 1em;
+}
+#module-music-more {
+	position: absolute;
+	top: 0.25em;
+	right: 0.5em;
+	font-size: 1.25em;
+}
+audio {
+	display: none;
+}
+#module-music-more,
+#module-music-prev, #module-music-next, 
+#module-music-decVol, #module-music-incVol,
+#module-music-playPause,
+#module-music-auto {
+	user-select: none;
+	cursor: pointer;
+}
+#module-music-prev {
+	padding-left: 30%;
+	float: left;
+}
+#module-music-next {
+	padding-right: 30%;
+	float: right;
+}
+#module-music-auto {
+	font-weight: bold;
+	color: red;
+}
