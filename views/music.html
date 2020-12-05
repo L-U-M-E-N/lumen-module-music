@@ -1,33 +1,18 @@
-<!DOCTYPE html>
-<html lang="fr">
-	<head>
-		<link rel="stylesheet" type="text/css" href="../css/music.css">
-		<script type="text/javascript">
-			const currentWindow = 'music';
-		</script>
-	</head>
-	<body>
-		<div id="window-bar">
-			<span id="window-title">Projet L.U.M.E.N - Music</span>
-			<span id="window-close-button">✕</span>
-		</div>
+<div class="main-music"> 	
+	<div id="albumlist"></div>
+	<ul id="album-details">
 
-		<!-- Grid -->
-		<div class="main-music"> 	
-			<div id="albumlist"></div>
-			<ul id="album-details">
+	</ul>
+	<a id="album-details-close">X</a>
+	<div id="playlist">
+		<p id="playlist-head">Playlist</p>
+		<p id="playlist-cmd"><span id="playlist-refresh">Refresh</span> - <span id="playlist-random">Random</span> - <span id="playlist-clear">Empty list</span></p>
+		<ul id="music-list">
 
-			</ul>
-			<a id="album-details-close">X</a>
-			<div id="playlist">
-				<p id="playlist-head">Playlist</p>
-				<p id="playlist-cmd"><span id="playlist-refresh">Refresh</span> - <span id="playlist-random">Random</span> - <span id="playlist-clear">Empty list</span></p>
-				<ul id="music-list">
+		</ul>
 
-				</ul>
-			</div>
-		</div>
-
-		<script type="text/javascript" src="../js/main.js"></script>
-	</body>
-</html>
+		<audio id="audio" src="" controls />
+	</div>
+</div>
+<script>const currentWindow = 'music';</script>
+<script type="text/javascript" src="../js/main.js"></script>

@@ -1,35 +1,132 @@
+/**
+ * Module
+ */
 .module-music {
 	position: relative;
-
 	text-align: center;
 }
-.module-music img {
-	max-width: 60%;
 
-	padding-bottom: 1em;
-}
 #module-music-more {
 	position: absolute;
 	top: 0.25em;
 	right: 0.5em;
 	font-size: 1.25em;
 }
-#module-music-more,
-#module-music-prev, #module-music-next, 
-#module-music-decVol, #module-music-incVol,
-#module-music-playPause,
-#module-music-auto {
+
+.module-music audio {
+	display: none;
+}
+
+.module-monitoring-status {
+	display: inline-block;
+	margin-top: -165px;
+	width: 100%;
+	float: right;
+	font-size: 3rem;
+}
+
+/**
+ * Window
+ */
+.main-music {
+	position: fixed;
+	top: 2em;
+	height: calc(100% - 2em);
+	width: 100%;
+
 	user-select: none;
+}
+#music-list li:hover {
 	cursor: pointer;
 }
-#module-music-prev {
-	padding-left: 30%;
-	float: left;
+#playlist {
+	position: fixed;
+	top: 2em;
+	right: 0;
+	height: calc(100% - 2em);
+	width: 20%;
+	background-color:  rgb(150,150,150);
+	background-color: rgba(150,150,150,0.2);
+	border-top:  1px solid #ccc;
+	border-left: 1px solid #ccc;
+	padding: 1rem 0;
+	box-sizing: border-box;
 }
-#module-music-next {
-	padding-right: 30%;
-	float: right;
+#playlist-head, #playlist-cmd {
+	text-align: center;
+	margin: 0;
 }
-audio {
+#playlist-cmd span, .album-details-music {
+	cursor: pointer;
+}
+#playlist-cmd, #music-list {
+	margin-top: 0.5em;
+}
+#music-list {
+    list-style: none;
+    font-size: 0.9em;
+    padding: 10px;
+    height: calc(100% - 3em);
+    overflow: auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#albumlist, #album-details {
+	width: 80%;
+	height: 100%;
+	overflow-y: scroll;
+}
+#album-details {
 	display: none;
+	list-style: none;
+
+    padding: 0;
+    margin: 0;
+}
+#album-details-close {
+	position: fixed;
+	top: 1em;
+	right: calc(20% + 1em);
+
+	display: none;
+	cursor: pointer;
+}
+#album-details li {
+	margin-left: 0.5em;
+}
+.add-album {
+	position: absolute;
+	bottom: -0.4rem;
+	right: 0.4rem;
+	font-size: 2rem;
+}
+
+/**
+ * Tile system
+ */
+.tile {
+	width: 19%;
+
+	padding-top: calc(19.5% - 0.5rem);
+	margin: 0.25%;
+	border-radius: 1%;
+
+	display: inline-block;
+
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+	background-color:  rgb(150,150,150);
+	background-color: rgba(150,150,150,0.2);
+	
+	box-sizing: border-box;
+
+	position: relative;
+}
+.tile:hover {
+	cursor: pointer;
+}
+.tile p {
+	text-align: center;
 }

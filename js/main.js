@@ -31,6 +31,8 @@ class Music {
 			// DOM
 			audioDOM = document.querySelector('#audio');
 
+			Music.changeMusic();
+
 			// Volume
 			Music.updateVolume();
 			document.querySelector('#module-music-incVol')
@@ -55,7 +57,7 @@ class Music {
 
 			// Open window
 			document.getElementById('module-music-more').addEventListener('click', function() {
-				remote.getGlobal('createWindowFromModule')('Musique', 'music', 'views/music.html');
+				document.getElementById('music').click();
 			});
 
 			// Auto mode
@@ -206,8 +208,8 @@ class Music {
 	 */
 	static changeMusic() {
 		if(remote.getGlobal('playlistSrc').length == 0) {
-			document.querySelector('#module-music-img')
-				.src = 'MUSICPATH/_icons/noimage.jpg';
+			/*document.querySelector('#module-music-img')
+				.src = '';*/
 			document.querySelector('#module-music-title').innerText = 'Playlist vide';
 			audioDOM.src = '';
 			document.querySelector('#module-music-time').innerText = '0:00/0:00';
@@ -230,8 +232,8 @@ class Music {
 		albumName = albumName[albumName.length - 2];
 		if(albumName === undefined) { albumName = 'noimage'; }
 
-		document.querySelector('#module-music-img')
-			.src = 'MUSICPATH/_icons/' + albumName +'.jpg';
+		/*document.querySelector('#module-music-img')
+			.src = '';*/
 
 		if(audioDOM.paused) {
 			audioDOM.play();
