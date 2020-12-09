@@ -27,10 +27,6 @@ class Music {
 		}
 
 		if(currentWindow === 'index') {
-			ipcRenderer.on('musicChanged', function() {
-				Music.changeMusic();
-			});
-
 			Music.changeMusic();
 
 			// Volume
@@ -112,7 +108,7 @@ class Music {
 			document.querySelector('#playlist-random')
 				.addEventListener('click', Music.toggleRandom);
 			document.querySelector('#playlist-clear')
-				.addEventListener('click', Music.clearPlayList);
+				.addEventListener('click', MusicPlayer.clearPlayList);
 			document.querySelector('#album-details')
 				.addEventListener('contextmenu', Music.hideAlbum);
 			document.querySelector('#album-details-close')
@@ -147,17 +143,7 @@ class Music {
 			playlistRandom
 		});
 	}
-	static clearPlayList() {
-		playlist           = [];
-		playlistSrc        = [];
-		orderedPlaylist    = [];
-		orderedPlaylistSrc = [];
-		playlistCurrent    = 0;
 
-		Music.updateVarsToMain();
-		Music.drawPlaylist();
-		Music.changeMusic();
-	}
 	static refreshList() {
 		MusicPlayer.updateFilesList();
 	}
@@ -529,7 +515,7 @@ class Music {
 	static toggleAutoMode() {
 		autoMode = !autoMode;
 
-		Music.clearPlayList();
+		MusicPlayer.clearPlayList();
 
 		if(!autoMode) {
 			document.getElementById('module-music-auto').style.color = 'red';

@@ -76,9 +76,28 @@ class Music {
 		}
 	}
 
+	static async _stop() {
+		if(Music.player) {
+			await Music.player.destroy();
+			Music.player = null;
+		}
+
+		window.getFocusedWindow().webContents.send('fileListUpdated', {});
+	}
+
 	/**
 	 * Exposed Setters
 	 */
+	static clearPlayList() {
+		playlist           = [];
+		playlistSrc        = [];
+		orderedPlaylist    = [];
+		orderedPlaylistSrc = [];
+		playlistCurrent    = 0;
+
+		Music._stop();
+	}
+
 	static pause() {
 		if(Music.player) {
 			Music.player.pause();
@@ -92,20 +111,14 @@ class Music {
 	}
 
 	static async playNextMusic() {
-		if(Music.player) {
-			await Music.player.destroy();
-			Music.player = null;
-		}
+		await Music._stop();
 
 		playlistCurrent = (playlistCurrent + 1) % playlistSrc.length;
 		Music._playMusic(playlistSrc[playlistCurrent]);
 	}
 
 	static async playPrevMusic() {
-		if(Music.player) {
-			await Music.player.destroy();
-			Music.player = null;
-		}
+		await Music._stop();
 
 		playlistCurrent = (playlistSrc.length + playlistCurrent - 1) % playlistSrc.length;
 		Music._playMusic(playlistSrc[playlistCurrent]);
