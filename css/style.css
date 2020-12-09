@@ -25,6 +25,23 @@
 	font-size: 3rem;
 }
 
+#module-music-more,
+#module-music-prev, #module-music-next, 
+#module-music-decVol, #module-music-incVol,
+#module-music-playPause,
+#module-music-auto {
+	user-select: none;
+	cursor: pointer;
+}
+#module-music-prev {
+	padding-left: 30%;
+	float: left;
+}
+#module-music-next {
+	padding-right: 30%;
+	float: right;
+}
+
 /**
  * Window
  */

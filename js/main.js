@@ -121,6 +121,8 @@ class Music {
 	 * Module on main window
 	 */
 	static applyMusicChange() {
+		// TODO: Migrate to server side that method
+
 		if(
 			MusicPlayer.getCurrentMusicPath() === '' ||
 			Number.isNaN(MusicPlayer.getDuration())
@@ -284,6 +286,7 @@ class Music {
 	}
 
 	static toggleRandom() {
+		// TODO: Migrate to server side that method
 		playlistRandom = !MusicPlayer.isPlaylistRandom();
 		if(playlistRandom) {
 			MusicPlayer._shufflePlaylist();

@@ -26,6 +26,10 @@ class Music {
 		filePath = filePath.replaceAll('/', '\\');
 
 		if(Music.player && Music.player.src === filePath) {
+			if(!Music.player.playing) {
+				await Music.player.play();
+			}
+
 			return;
 		}
 
@@ -320,7 +324,7 @@ class Music {
 
 	static paused() {
 		if(!Music.player) {
-			return false;
+			return true;
 		}
 
 		return !Music.player.playing;
