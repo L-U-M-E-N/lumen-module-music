@@ -1,5 +1,4 @@
 const ipcRenderer = require('electron').ipcRenderer;
-let audioDOM;
 
 let playlist           = [];
 let playlistSrc        = [];
@@ -10,12 +9,16 @@ let playlistRandom     = false;
 let lastRemove = 0;
 let autoMode = false;
 
+let MusicPlayer;
+
 class Music {
 	/**
 	 * Load
 	 */
 	static init() {
-		if(localStorage.audioVolume == undefined) {
+		MusicPlayer = remote.getGlobal('Music');
+
+		if(typeof localStorage.audioVolume === 'undefined') {
 			localStorage.audioVolume = 50;
 		}
 
@@ -23,13 +26,10 @@ class Music {
 			localStorage.musicScores = '{}';
 		}
 
-		if(currentWindow == 'index') {
+		if(currentWindow === 'index') {
 			ipcRenderer.on('musicChanged', function() {
 				Music.changeMusic();
 			});
-
-			// DOM
-			audioDOM = document.querySelector('#audio');
 
 			Music.changeMusic();
 
@@ -49,11 +49,6 @@ class Music {
 			// Play/Pause
 			document.querySelector('#module-music-playPause')
 				.addEventListener('click', Music.togglePlayPause);
-
-			// Next on end
-			audioDOM.addEventListener('ended', Music.nextMusic);
-			audioDOM.addEventListener('error', Music.nextMusic);
-			audioDOM.addEventListener('stalled', Music.nextMusic);
 
 			// Open window
 			document.getElementById('module-music-more').addEventListener('click', function() {
@@ -88,27 +83,15 @@ class Music {
 			});
 
 			// Mise a jour du temps
-			setInterval(function() {
-				if(audioDOM.paused) { return; }
-
-				let secCurr = parseInt(('' + audioDOM.currentTime).split('.')[0])%60;
-				if(secCurr < 10) { secCurr = '0' + secCurr; }
-
-				let secDuration = parseInt(('' + audioDOM.duration).split('.')[0])%60;
-				if(secDuration < 10) { secDuration = '0' + secDuration; }
-
-				document.querySelector('#module-music-time')
-					.innerText = Math.floor(audioDOM.currentTime/60) + ':' + secCurr + 
-						'/' + Math.floor(audioDOM.duration/60) + ':' + secDuration;
-			}, 1000);
-		} else if(currentWindow == 'music') {
+			setInterval(Music.drawMusicStatus, 1000);
+		} else if(currentWindow === 'music') {
 			Music.regenerateAlbumList();
 
 			ipcRenderer.on('fileListUpdated', function() {
 				window.location.reload();
 			});
 
-			if(remote.getGlobal('playlistRandom')) {
+			if(MusicPlayer.isPlaylistRandom()) {
 				document.querySelector('#playlist-random')
 					.style.color = 'red';
 			}
@@ -141,7 +124,7 @@ class Music {
 			orderedPlaylist = remote.getGlobal('orderedPlaylist');
 			orderedPlaylistSrc = remote.getGlobal('orderedPlaylistSrc');
 			playlistCurrent = remote.getGlobal('playlistCurrent');
-			playlistRandom = remote.getGlobal('playlistRandom');
+			playlistRandom = MusicPlayer.isPlaylistRandom();
 
 			Music.drawPlaylist();
 		}
@@ -171,9 +154,9 @@ class Music {
 			playlistSrc[i] = playlistSrc[j];
 			playlistSrc[j] = x;
 
-			if(i==playlistCurrent) {
+			if(i === playlistCurrent) {
 				playlistCurrent = j;
-			} else if(j==playlistCurrent) {
+			} else if(j === playlistCurrent) {
 				playlistCurrent = i;
 			}
 		}
@@ -197,75 +180,56 @@ class Music {
 
 		Music.updateVarsToMain();
 		Music.drawPlaylist();
-		remote.getGlobal('musicEvents').musicChanged();
+		Music.changeMusic();
 	}
 	static refreshList() {
-		remote.getGlobal('musicEvents').updateFiles();
+		MusicPlayer.updateFilesList();
 	}
 
 	/**
 	 * Module on main window
 	 */
 	static changeMusic() {
-		if(remote.getGlobal('playlistSrc').length == 0) {
-			/*document.querySelector('#module-music-img')
-				.src = '';*/
-			document.querySelector('#module-music-title').innerText = 'Playlist vide';
-			audioDOM.src = '';
-			document.querySelector('#module-music-time').innerText = '0:00/0:00';
-			Music.drawPlayPause();
+		Music.drawMusicStatus();
+
+		if(remote.getGlobal('playlistSrc').length === 0) {
 			return;
 		}
 
-		let musicURL = remote.getGlobal('playlistSrc')[remote.getGlobal('playlistCurrent')];
-		if(musicURL == undefined) { return; }
-
-		if(audioDOM.src == Music.transformSrcToFileSrc(musicURL)) { return; }
-
 		Music.applyMusicChange();
 
-		audioDOM.src = musicURL;
-		document.querySelector('#module-music-title')
-			.innerText = remote.getGlobal('playlist')[remote.getGlobal('playlistCurrent')];
-
-		let albumName = musicURL.split('/');
-		albumName = albumName[albumName.length - 2];
-		if(albumName === undefined) { albumName = 'noimage'; }
-
-		/*document.querySelector('#module-music-img')
-			.src = '';*/
-
-		if(audioDOM.paused) {
-			audioDOM.play();
+		if(MusicPlayer.paused()) {
 			Music.drawPlayPause();
 		}
+
+		MusicPlayer.play();
 	}
 
 	static applyMusicChange() {
 		if(
-			audioDOM.src === '' ||
-			Number.isNaN(audioDOM.duration)
+			MusicPlayer.getCurrentMusicPath() === '' ||
+			Number.isNaN(MusicPlayer.getDuration())
 		) {
 			return;
 		}
 
 		const musicScores = JSON.parse(localStorage.musicScores);
 
-		if(!musicScores[audioDOM.src]) {
-			musicScores[audioDOM.src] = {
+		if(!musicScores[MusicPlayer.getCurrentMusicPath()]) {
+			musicScores[MusicPlayer.getCurrentMusicPath()] = {
 				count: 0,
 				scoreSum: 0
 			};
 		}
 
-		musicScores[audioDOM.src].count = parseInt(musicScores[audioDOM.src].count) + 1;
-		musicScores[audioDOM.src].scoreSum = parseInt(musicScores[audioDOM.src].scoreSum) + (audioDOM.currentTime / audioDOM.duration);
+		musicScores[MusicPlayer.getCurrentMusicPath()].count = parseInt(musicScores[MusicPlayer.getCurrentMusicPath()].count) + 1;
+		musicScores[MusicPlayer.getCurrentMusicPath()].scoreSum = parseInt(musicScores[MusicPlayer.getCurrentMusicPath()].scoreSum) + (MusicPlayer.getCurrentTime() / MusicPlayer.getDuration());
 
 		localStorage.musicScores = JSON.stringify(musicScores);
 	}
 
 	static updateVolume() {
-		audioDOM.volume = localStorage.audioVolume / 100;
+		MusicPlayer.setVolume(localStorage.audioVolume / 100);
 		document.querySelector('#module-music-volume')
 			.innerText = localStorage.audioVolume + '%';
 	}
@@ -279,43 +243,56 @@ class Music {
 
 	static decreaseVolume() {
 		if(localStorage.audioVolume <= 0) { return; }
-		
+
 		localStorage.audioVolume = parseInt(localStorage.audioVolume) - 2;
 		Music.updateVolume();
 	}
 
 	static prevMusic() {
-		playlistCurrent = remote.getGlobal('playlistCurrent')-1;
-		if(playlistCurrent < 0) {
-			playlistCurrent = 
-				remote.getGlobal('playlist').length;
-		}
-
-		ipcRenderer.send('updateCurrent', playlistCurrent);
+		MusicPlayer.playPrevMusic();
 		Music.changeMusic();
 	}
 
 	static nextMusic() {
-		playlistCurrent = remote.getGlobal('playlistCurrent')+1;
-		if(playlistCurrent > remote.getGlobal('playlist').length - 1) {
-			playlistCurrent = 0;
-		}
-		ipcRenderer.send('updateCurrent', playlistCurrent);
+		MusicPlayer.playNextMusic();
 		Music.changeMusic();
 	}
 
 	static togglePlayPause() {
-		if(audioDOM.paused && remote.getGlobal('playlist')[remote.getGlobal('playlistCurrent')] !== undefined) {
-			audioDOM.play();
+		if(MusicPlayer.paused()) {
+			MusicPlayer.play();
 		} else {
-			audioDOM.pause();
+			MusicPlayer.pause();
 		}
 
 		Music.drawPlayPause();
 	}
 
+	static drawMusicStatus(checkPaused=true) {
+		if(checkPaused && MusicPlayer.paused()) { return; }
+
+		if(remote.getGlobal('playlistSrc').length === 0) {
+			document.querySelector('#module-music-title').innerText = 'Empty playlist'; // @TODO: locales
+			document.querySelector('#module-music-time').innerText = '0:00/0:00';
+			Music.drawPlayPause();
+			return;
+		}
+
+		let secCurr = parseInt(('' + MusicPlayer.getCurrentTime()).split('.')[0])%60;
+		if(secCurr < 10) { secCurr = '0' + secCurr; }
+
+		let secDuration = parseInt(('' + MusicPlayer.getDuration()).split('.')[0])%60;
+		if(secDuration < 10) { secDuration = '0' + secDuration; }
+
+		document.querySelector('#module-music-time')
+			.innerText = Math.floor(MusicPlayer.getCurrentTime()/60) + ':' + secCurr +
+				'/' + Math.floor(MusicPlayer.getDuration()/60) + ':' + secDuration;
+
+		document.querySelector('#module-music-title').innerText = MusicPlayer.getCurrentMusicTitle();
+	}
+
 	static drawPlayPause() {
-		if(audioDOM.paused) {
+		if(MusicPlayer.paused()) {
 			document.querySelector('#module-music-playPause')
 				.innerHTML = '▶';
 		} else {
@@ -333,7 +310,7 @@ class Music {
 		let playlistHTML = '';
 
 		for(let i=0; i<playlist.length; i++) {
-			if(i==remote.getGlobal('playlistCurrent')) {
+			if(i === remote.getGlobal('playlistCurrent')) {
 				playlistHTML += '<li id="' + i + '"><b>' + playlist[i] + '</b></li>';
 			} else {
 				playlistHTML += '<li  id="' + i + '">' + playlist[i] + '</li>';
@@ -342,12 +319,12 @@ class Music {
 
 		document.querySelector('#music-list').innerHTML = playlistHTML;
 
-		let musicsInPlaylist = document.querySelectorAll('#music-list li');
+		const musicsInPlaylist = document.querySelectorAll('#music-list li');
 		for(let m=0; m<musicsInPlaylist.length; m++) {
 			musicsInPlaylist[m].addEventListener('click', function() {
 				playlistCurrent = parseInt(this.id);
 				ipcRenderer.send('updateCurrent', playlistCurrent);
-				remote.getGlobal('musicEvents').musicChanged();
+				Music.changeMusic();
 				Music.drawPlaylist();
 			});
 
@@ -355,8 +332,8 @@ class Music {
 				if(Date.now() - lastRemove < 150) { return; }
 				lastRemove = Date.now();
 
-				let currId = parseInt(this.id);
-				let orderedId = orderedPlaylist.indexOf(playlist[currId]);
+				const currId = parseInt(this.id);
+				const orderedId = orderedPlaylist.indexOf(playlist[currId]);
 
 				playlist.splice(currId,1);
 				playlistSrc.splice(currId,1);
@@ -383,7 +360,7 @@ class Music {
 
 		document.querySelector('#album-details').innerHTML = content;
 
-		let musicsDOM = document.querySelectorAll('.album-details-music');
+		const musicsDOM = document.querySelectorAll('.album-details-music');
 		for(let m=0; m<musicsDOM.length; m++) {
 			musicsDOM[m].addEventListener('click', function(e) {
 				Music.addMusic(this.getAttribute('albumid'), this.getAttribute('musicid'));
@@ -405,7 +382,7 @@ class Music {
 	}
 
 	static toggleRandom() {
-		playlistRandom = !remote.getGlobal('playlistRandom');
+		playlistRandom = !MusicPlayer.isPlaylistRandom();
 		if(playlistRandom) {
 			Music.scramblePlaylist();
 			document.querySelector('#playlist-random')
@@ -433,7 +410,7 @@ class Music {
 
 	static regenerateAlbumList() {
 		let albumHTML = '';
-		let albums = [];
+		const albums = [];
 
 		for(const i in remote.getGlobal('musicList')) {
 			albums.push(i);
@@ -469,7 +446,7 @@ class Music {
 
 		document.querySelector('#albumlist').innerHTML = albumHTML;
 
-		let albumsDOM = document.querySelectorAll('.tile');
+		const albumsDOM = document.querySelectorAll('.tile');
 		for(let a=0; a<albumsDOM.length; a++) {
 			albumsDOM[a].addEventListener('click', function(e) {
 
@@ -486,20 +463,20 @@ class Music {
 
 	static addAlbum(albumID) {
 		for(let i=0; i<remote.getGlobal('musicList')[albumID].length; i++) {
-			let update = (i !== remote.getGlobal('musicList')[albumID].length - 1);
+			const update = (i !== remote.getGlobal('musicList')[albumID].length - 1);
 
 			Music.addMusic(albumID, i, update);
 		}
 	}
 
 	static addMusic(albumID, musicID, albumAdd=false) {
-		let newsrc = albumID + '/' + remote.getGlobal('musicList')[albumID][musicID];
+		const newsrc = albumID + '/' + remote.getGlobal('musicList')[albumID][musicID];
 
 		if(orderedPlaylistSrc.indexOf(newsrc) != -1) { return; }
 
 		orderedPlaylistSrc.push(newsrc);
 
-		let musicName = remote.getGlobal('musicList')[albumID][musicID].split('.');
+		const musicName = remote.getGlobal('musicList')[albumID][musicID].split('.');
 		musicName.pop();
 		orderedPlaylist.push(musicName.join('.'));
 

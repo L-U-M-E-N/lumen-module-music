@@ -1,0 +1,14 @@
+{
+  "name": "lumen-module-music",
+  "version": "1.0.0",
+  "description": "lumen-module-music",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Axel \"Elanis\" Soupé",
+  "license": "MIT",
+  "dependencies": {
+    "audic": "^2.0.0"
+  }
+}
