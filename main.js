@@ -29,11 +29,20 @@ class Music {
 			return;
 		}
 
+		if(Music.mutex) {
+			return;
+		}
+
 		console.log('Playing ', filePath);
 		try {
 			if (fs.existsSync(filePath)) {
+				Music.mutex = true;
+				await Music._stop();
+
 				Music.player = new Audic(filePath);
 				await Music.player.play();
+
+				Music.mutex = false;
 
 				// First timeout to wait VLC start
 				clearTimeout(Music.nextTimeout);
@@ -78,7 +87,7 @@ class Music {
 
 	static async _notifyClient() {
 		if(!window.getFocusedWindow()) { return; }
-		window.getFocusedWindow().webContents.send('fileListUpdated', {});
+		window.getFocusedWindow().webContents.send('listsUpdated', {});
 	}
 
 	static async _stop() {
@@ -93,6 +102,41 @@ class Music {
 	/**
 	 * Exposed Setters
 	 */
+	static addAlbum(albumID) {
+		for(let i=0; i< musicList[albumID].length; i++) {
+			const update = (i !== musicList[albumID].length - 1);
+
+			Music.addMusic(albumID, i, update);
+		}
+
+		Music._notifyClient();
+		Music.play();
+	}
+
+	static addMusic(albumID, musicID, albumAdd=false) {
+		const newsrc = albumID + '/' + musicList[albumID][musicID];
+
+		if(orderedPlaylistSrc.includes(newsrc)) { return; }
+
+		orderedPlaylistSrc.push(newsrc);
+
+		const musicName = musicList[albumID][musicID].split('.');
+		musicName.pop();
+		orderedPlaylist.push(musicName.join('.'));
+
+		if(!albumAdd) {
+			playlist    = orderedPlaylist.slice();
+			playlistSrc = orderedPlaylistSrc.slice();
+
+			if(playlistRandom) {
+				Music._shufflePlaylist();
+			}
+
+			Music._notifyClient();
+			Music.play();
+		}
+	}
+
 	static clearPlayList() {
 		playlist           = [];
 		playlistSrc        = [];
@@ -179,6 +223,32 @@ class Music {
 		Music._playMusic(playlistSrc[playlistCurrent]);
 	}
 
+	static async chooseMusic(playListMusicId) {
+		playListMusicId = parseInt(playListMusicId, 10);
+		if(Number.isNaN(playListMusicId) || playListMusicId < 0 || playListMusicId >= playlist.length) {
+			return;
+		}
+
+		playlistCurrent = playListMusicId;
+		Music._playMusic(playlistSrc[playlistCurrent]);
+	}
+
+	static removeFromPlayList() {
+		const orderedId = orderedPlaylist.indexOf(playlist[currId]);
+
+		playlist.splice(currId,1);
+		playlistSrc.splice(currId,1);
+
+		orderedPlaylist.splice(orderedId,1);
+		orderedPlaylistSrc.splice(orderedId,1);
+
+		if(currId === playlistCurrent) {
+			Music.playNextMusic();
+		}
+
+		Music._notifyClient();
+	}
+
 	static setVolume(volume) {
 		if(Music.player) {
 			Music.player.volume = volume;
@@ -230,6 +300,10 @@ class Music {
 		}
 
 		return Music.player.duration;
+	}
+
+	static getPlaylist() {
+		return playlist;
 	}
 
 	static getVolume() {

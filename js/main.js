@@ -1,13 +1,5 @@
 const ipcRenderer = require('electron').ipcRenderer;
 
-let playlist           = [];
-let playlistSrc        = [];
-let orderedPlaylist    = [];
-let orderedPlaylistSrc = [];
-let playlistCurrent    = 0;
-let playlistRandom     = false;
-let lastRemove = 0;
-
 let MusicPlayer;
 
 class Music {
@@ -27,6 +19,10 @@ class Music {
 
 		if(currentWindow === 'index') {
 			Music.changeMusic();
+
+			ipcRenderer.on('listsUpdated', function() {
+				Music.drawMusicStatus();
+			});
 
 			// Volume
 			Music.updateVolume();
@@ -82,8 +78,9 @@ class Music {
 		} else if(currentWindow === 'music') {
 			Music.regenerateAlbumList();
 
-			ipcRenderer.on('fileListUpdated', function() {
-				window.location.reload();
+			ipcRenderer.on('listsUpdated', function() {
+				Music.regenerateAlbumList();
+				Music.drawPlaylist();
 			});
 
 			if(MusicPlayer.isPlaylistRandom()) {
@@ -113,30 +110,8 @@ class Music {
 			document.querySelector('#album-details-close')
 				.addEventListener('click', Music.hideAlbum);
 
-			// Recuperation de la session precedente
-			playlist = remote.getGlobal('playlist');
-			playlistSrc = remote.getGlobal('playlistSrc');
-			orderedPlaylist = remote.getGlobal('orderedPlaylist');
-			orderedPlaylistSrc = remote.getGlobal('orderedPlaylistSrc');
-			playlistCurrent = remote.getGlobal('playlistCurrent');
-			playlistRandom = MusicPlayer.isPlaylistRandom();
-
 			Music.drawPlaylist();
 		}
-	}
-
-	/**
-	 * Misc functions
-	 */
-	static updateVarsToMain() {
-		ipcRenderer.send('updateVars', {
-			playlist,
-			playlistSrc,
-			orderedPlaylist,
-			orderedPlaylistSrc,
-			playlistCurrent,
-			playlistRandom
-		});
 	}
 
 	static refreshList() {
@@ -266,8 +241,9 @@ class Music {
 
 		let playlistHTML = '';
 
-		for(let i=0; i<playlist.length; i++) {
-			if(i === remote.getGlobal('playlistCurrent')) {
+		const playlist = MusicPlayer.getPlaylist();
+		for(let i=0; i < playlist.length; i++) {
+			if(playlist[i] === MusicPlayer.getCurrentMusicPath()) {
 				playlistHTML += '<li id="' + i + '"><b>' + playlist[i] + '</b></li>';
 			} else {
 				playlistHTML += '<li  id="' + i + '">' + playlist[i] + '</li>';
@@ -279,10 +255,8 @@ class Music {
 		const musicsInPlaylist = document.querySelectorAll('#music-list li');
 		for(let m=0; m<musicsInPlaylist.length; m++) {
 			musicsInPlaylist[m].addEventListener('click', function() {
-				playlistCurrent = parseInt(this.id);
-				ipcRenderer.send('updateCurrent', playlistCurrent);
-				Music.changeMusic();
-				Music.drawPlaylist();
+				const currId = parseInt(this.id);
+				MusicPlayer.chooseMusic(currId);
 			});
 
 			musicsInPlaylist[m].addEventListener('contextmenu', function() {
@@ -290,19 +264,7 @@ class Music {
 				lastRemove = Date.now();
 
 				const currId = parseInt(this.id);
-				const orderedId = orderedPlaylist.indexOf(playlist[currId]);
-
-				playlist.splice(currId,1);
-				playlistSrc.splice(currId,1);
-
-				orderedPlaylist.splice(orderedId,1);
-				orderedPlaylistSrc.splice(orderedId,1);
-
-				Music.updateVarsToMain();
-				if(currId === playlistCurrent) {
-					Music.nextMusic();
-				}
-				Music.drawPlaylist();
+				MusicPlayer.removeFromPlayList(currId);
 			});
 		}
 	}
@@ -320,7 +282,7 @@ class Music {
 		const musicsDOM = document.querySelectorAll('.album-details-music');
 		for(let m=0; m<musicsDOM.length; m++) {
 			musicsDOM[m].addEventListener('click', function(e) {
-				Music.addMusic(this.getAttribute('albumid'), this.getAttribute('musicid'));
+				MusicPlayer.addMusic(this.getAttribute('albumid'), this.getAttribute('musicid'));
 			});
 		}
 
@@ -396,7 +358,7 @@ class Music {
 			albumName = albumName[albumName.length - 1];
 			if(albumName === undefined) { albumName = 'noimage'; }
 
-			albumHTML += '<div class="tile" id="' + i + 
+			albumHTML += '<div class="tile" id="' + i +
 				'" style="background-image: url(\'MUSICPATH/_icons/' + albumName +'.jpg\');">' + 
 				'<span class="add-album">+</span></div>';
 		}
@@ -409,44 +371,12 @@ class Music {
 
 				if(e.target.classList.contains('add-album')) {
 					// Add an album
-					Music.addAlbum(this.id);
+					MusicPlayer.addAlbum(this.id);
 				} else {
 					// Show an album details
 					Music.drawAlbum(this.id);
 				}
 			});
-		}
-	}
-
-	static addAlbum(albumID) {
-		for(let i=0; i<remote.getGlobal('musicList')[albumID].length; i++) {
-			const update = (i !== remote.getGlobal('musicList')[albumID].length - 1);
-
-			Music.addMusic(albumID, i, update);
-		}
-	}
-
-	static addMusic(albumID, musicID, albumAdd=false) {
-		const newsrc = albumID + '/' + remote.getGlobal('musicList')[albumID][musicID];
-
-		if(orderedPlaylistSrc.indexOf(newsrc) != -1) { return; }
-
-		orderedPlaylistSrc.push(newsrc);
-
-		const musicName = remote.getGlobal('musicList')[albumID][musicID].split('.');
-		musicName.pop();
-		orderedPlaylist.push(musicName.join('.'));
-
-		if(!albumAdd) {
-			playlist    = orderedPlaylist.slice();
-			playlistSrc = orderedPlaylistSrc.slice();
-
-			if(playlistRandom) {
-				MusicPlayer._shufflePlaylist();
-			}
-
-			Music.updateVarsToMain();
-			Music.drawPlaylist();
 		}
 	}
 
