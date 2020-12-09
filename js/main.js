@@ -125,10 +125,6 @@ class Music {
 		}
 	}
 
-	static transformSrcToFileSrc(src) {
-		return 'file:///' + src.split(' ').join('%20');
-	}
-
 	/**
 	 * Misc functions
 	 */

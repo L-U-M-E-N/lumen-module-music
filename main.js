@@ -76,13 +76,18 @@ class Music {
 		}
 	}
 
+	static async _notifyClient() {
+		if(!window.getFocusedWindow()) { return; }
+		window.getFocusedWindow().webContents.send('fileListUpdated', {});
+	}
+
 	static async _stop() {
 		if(Music.player) {
 			await Music.player.destroy();
 			Music.player = null;
 		}
 
-		window.getFocusedWindow().webContents.send('fileListUpdated', {});
+		Music._notifyClient();
 	}
 
 	/**
@@ -195,7 +200,7 @@ class Music {
 			// Notify client only when we don't have files added to the list anymore
 			clearTimeout(timeout);
 			timeout = setTimeout(function() {
-				window.getFocusedWindow().webContents.send('fileListUpdated', {});
+				Music._notifyClient();
 			}, 250);
 		});
 	}
