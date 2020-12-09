@@ -15,27 +15,10 @@ global.playlistCurrent    = 0;
 global.playlistRandom     = false;
 
 class Music {
-	static updateFilesList() {
-		musicList = {};
-		let timeout = -1;
-
-	fileScanner('MUSICPATH',/\.(mp3|ogg|flac|m4a)$/,function(filename) {
-			let albumName = filename.split('\\');
-			const musicName = albumName.pop();
-			albumName     = albumName.join('/');
-
-			if(musicList[albumName] === undefined) { musicList[albumName] = []; }
-			musicList[albumName].push(musicName);
-
-			// Notify client only when we don't have files added to the list anymore
-			clearTimeout(timeout);
-			timeout = setTimeout(function() {
-				window.getFocusedWindow().webContents.send('fileListUpdated', {});
-			}, 250);
-		});
-	}
-
-	static async playMusic(filePath) {
+	/**
+	 * Internal functions
+	 */
+	static async _playMusic(filePath) {
 		if(!filePath) {
 			return;
 		}
@@ -69,61 +52,42 @@ class Music {
 		}
 	}
 
-	static play() {
-		if(playlistSrc.length > 0) {
-			Music.playMusic(playlistSrc[playlistCurrent]);
+	static _shufflePlaylist() {
+		let j, x;
+
+		for (let i = playlist.length - 1; i > 0; i--) {
+			j = Math.floor(Math.random() * (i + 1));
+
+			// Swap titles
+			x = playlist[i];
+			playlist[i] = playlist[j];
+			playlist[j] = x;
+
+			// Swap sources
+			x = playlistSrc[i];
+			playlistSrc[i] = playlistSrc[j];
+			playlistSrc[j] = x;
+
+			if(i === playlistCurrent) {
+				playlistCurrent = j;
+			} else if(j === playlistCurrent) {
+				playlistCurrent = i;
+			}
 		}
 	}
 
+	/**
+	 * Exposed Setters
+	 */
 	static pause() {
 		if(Music.player) {
 			Music.player.pause();
 		}
 	}
 
-	static paused() {
-		if(!Music.player) {
-			return false;
-		}
-
-		return !Music.player.playing;
-	}
-
-	static getCurrentTime() {
-		if(!Music.player) {
-			return 0;
-		}
-
-		return Music.player._currentTime;
-	}
-
-	static getDuration() {
-		if(!Music.player) {
-			return 0;
-		}
-
-		return Music.player.duration;
-	}
-
-	static getCurrentMusicTitle() {
-		return playlist[playlistCurrent] || '';
-	}
-
-	static getCurrentMusicPath() {
-		return playlistSrc[playlistCurrent] || '';
-	}
-
-	static getVolume() {
-		if(!Music.player) {
-			return 0;
-		}
-
-		return Music.player.volume;
-	}
-
-	static setVolume(volume) {
-		if(Music.player) {
-			Music.player.volume = volume;
+	static play() {
+		if(playlistSrc.length > 0) {
+			Music._playMusic(playlistSrc[playlistCurrent]);
 		}
 	}
 
@@ -134,7 +98,7 @@ class Music {
 		}
 
 		playlistCurrent = (playlistCurrent + 1) % playlistSrc.length;
-		Music.playMusic(playlistSrc[playlistCurrent]);
+		Music._playMusic(playlistSrc[playlistCurrent]);
 	}
 
 	static async playPrevMusic() {
@@ -144,33 +108,83 @@ class Music {
 		}
 
 		playlistCurrent = (playlistSrc.length + playlistCurrent - 1) % playlistSrc.length;
-		Music.playMusic(playlistSrc[playlistCurrent]);
+		Music._playMusic(playlistSrc[playlistCurrent]);
+	}
+
+	static setVolume(volume) {
+		if(Music.player) {
+			Music.player.volume = volume;
+		}
+	}
+
+	static updateFilesList() {
+		musicList = {};
+		let timeout = -1;
+
+		fileScanner('MUSICPATH',/\.(mp3|ogg|flac|m4a)$/,function(filename) {
+			let albumName = filename.split('\\');
+			const musicName = albumName.pop();
+			albumName     = albumName.join('/');
+
+			if(musicList[albumName] === undefined) { musicList[albumName] = []; }
+			musicList[albumName].push(musicName);
+
+			// Notify client only when we don't have files added to the list anymore
+			clearTimeout(timeout);
+			timeout = setTimeout(function() {
+				window.getFocusedWindow().webContents.send('fileListUpdated', {});
+			}, 250);
+		});
+	}
+
+	/**
+	 * Exposed Getters
+	 */
+	static getCurrentTime() {
+		if(!Music.player) {
+			return 0;
+		}
+
+		return Music.player._currentTime;
+	}
+
+	static getCurrentMusicTitle() {
+		return playlist[playlistCurrent] || '';
+	}
+
+	static getCurrentMusicPath() {
+		return playlistSrc[playlistCurrent] || '';
+	}
+
+	static getDuration() {
+		if(!Music.player) {
+			return 0;
+		}
+
+		return Music.player.duration;
+	}
+
+	static getVolume() {
+		if(!Music.player) {
+			return 0;
+		}
+
+		return Music.player.volume;
 	}
 
 	static async isPlaylistRandom() {
 		return playlistRandom;
 	}
+
+	static paused() {
+		if(!Music.player) {
+			return false;
+		}
+
+		return !Music.player.playing;
+	}
 }
 
 global.Music = Music;
-
-ipcMain.on('updateVars', function(e, data) {
-	playlist = data.playlist;
-	playlistSrc = data.playlistSrc;
-	orderedPlaylist = data.orderedPlaylist;
-	orderedPlaylistSrc = data.orderedPlaylistSrc;
-	playlistCurrent = data.playlistCurrent;
-	playlistRandom = data.playlistRandom;
-
-	musicEvents.musicChanged();
-});
-
-ipcMain.on('updateCurrent', function(e, curr) {
-	playlistCurrent = curr;
-});
-
-ipcMain.on('updateRandom', function(e, curr) {
-	playlistRandom = curr;
-});
 
 Music.updateFilesList();

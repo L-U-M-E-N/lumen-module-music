@@ -137,30 +137,6 @@ class Music {
 	/**
 	 * Misc functions
 	 */
-	static scramblePlaylist() {
-		let j, x;
-		playlistCurrent = remote.getGlobal('playlistCurrent');
-
-		for (let i = playlist.length - 1; i > 0; i--) {
-			j = Math.floor(Math.random() * (i + 1));
-
-			// Swap titles
-			x = playlist[i];
-			playlist[i] = playlist[j];
-			playlist[j] = x;
-
-			// Swap sources
-			x = playlistSrc[i];
-			playlistSrc[i] = playlistSrc[j];
-			playlistSrc[j] = x;
-
-			if(i === playlistCurrent) {
-				playlistCurrent = j;
-			} else if(j === playlistCurrent) {
-				playlistCurrent = i;
-			}
-		}
-	}
 	static updateVarsToMain() {
 		ipcRenderer.send('updateVars', {
 			playlist,
@@ -384,7 +360,7 @@ class Music {
 	static toggleRandom() {
 		playlistRandom = !MusicPlayer.isPlaylistRandom();
 		if(playlistRandom) {
-			Music.scramblePlaylist();
+			MusicPlayer._shufflePlaylist();
 			document.querySelector('#playlist-random')
 				.style.color = 'red';
 		} else {
@@ -485,7 +461,7 @@ class Music {
 			playlistSrc = orderedPlaylistSrc.slice();
 
 			if(playlistRandom) {
-				Music.scramblePlaylist();
+				MusicPlayer._shufflePlaylist();
 			}
 
 			Music.updateVarsToMain();
