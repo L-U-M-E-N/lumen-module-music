@@ -98,6 +98,56 @@ class Music {
 		Music._stop();
 	}
 
+	static generatePlaylistFromMostLiked(musicScores,musicCount, randomInterval) {
+		const musics = [];
+		for(const albumID in musicList) {
+			const album = musicList[albumID];
+			for(const music of musicList[albumID]) {
+				const fullPath = albumID + '/' + music;
+
+				if(!musicScores[fullPath]) {
+					musicScores[fullPath] = {
+						count: 1, // Prevent divide by 0
+						scoreSum: 0.5
+					};
+				}
+
+				musics.push({
+					...musicScores[fullPath],
+					score: musicScores[fullPath].scoreSum / musicScores[fullPath].count,
+					path: fullPath,
+					name: music.substring(0, music.length - 4)
+				});
+			}
+		}
+
+		const alreadyAdded = new Set();
+		const proba = randomInterval / musicCount;
+		let same = 0;
+		while(playlist.length <= musicCount) {
+			const id = Math.floor(Math.random() * (musics.length - 1));
+
+			if(alreadyAdded.has(id)) {
+				same++;
+				if(same >= musicCount / 10) { break; }
+				continue;
+			}
+
+			if(Math.random() < ( proba + ((1 - proba) * musics[id].score))) {
+				playlist.push(musics[id].name);
+				playlistSrc.push(musics[id].path);
+
+				orderedPlaylist.push(musics[id].name);
+				orderedPlaylistSrc.push(musics[id].path);
+
+				alreadyAdded.add(id);
+				same = 0;
+			}
+		}
+
+		Music.play();
+	}
+
 	static pause() {
 		if(Music.player) {
 			Music.player.pause();

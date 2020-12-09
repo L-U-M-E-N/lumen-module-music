@@ -7,7 +7,6 @@ let orderedPlaylistSrc = [];
 let playlistCurrent    = 0;
 let playlistRandom     = false;
 let lastRemove = 0;
-let autoMode = false;
 
 let MusicPlayer;
 
@@ -53,7 +52,7 @@ class Music {
 
 			// Auto mode
 			document.querySelector('#module-music-auto')
-				.addEventListener('click', Music.toggleAutoMode);
+				.addEventListener('click', Music.randomPlayList);
 
 			// Clavier
 			document.addEventListener('keydown', function(e) {
@@ -455,78 +454,16 @@ class Music {
 		}
 	}
 
-	static setPlaylistFromMostLiked(musicCount, randomInterval) {
+	static randomPlayList() {
+		MusicPlayer.clearPlayList();
+
 		if(!localStorage.musicScores) {
 			localStorage.musicScores = '{}';
 		}
 
 		const musicScores = JSON.parse(localStorage.musicScores);
 
-		const musics = [];
-		const allMusics = remote.getGlobal('musicList');
-		for(const albumID in allMusics) {
-			const album = allMusics[albumID];
-			for(const music of allMusics[albumID]) {
-				const fullPath = albumID + '/' + music;
-
-				if(!musicScores[Music.transformSrcToFileSrc(fullPath)]) {
-					musicScores[Music.transformSrcToFileSrc(fullPath)] = {
-						count: 1, // Prevent divide by 0
-						scoreSum: 0.5
-					};
-				}
-
-				musics.push({
-					...musicScores[Music.transformSrcToFileSrc(fullPath)],
-					score: musicScores[Music.transformSrcToFileSrc(fullPath)].scoreSum / musicScores[Music.transformSrcToFileSrc(fullPath)].count,
-					path: fullPath,
-					name: music.substring(0, music.length - 4)
-				});
-			}
-		}
-
-		const alreadyAdded = new Set();
-		const proba = randomInterval / musicCount;
-		let same = 0;
-		while(playlist.length <= musicCount) {
-			const id = Math.floor(Math.random() * (musics.length - 1));
-
-			if(alreadyAdded.has(id)) {
-				same++;
-				if(same >= musicCount / 10) { break; }
-				continue;
-			}
-
-			if(Math.random() < ( proba + ((1 - proba) * musics[id].score))) {
-				playlist.push(musics[id].name);
-				playlistSrc.push(musics[id].path);
-
-				orderedPlaylist.push(musics[id].name);
-				orderedPlaylistSrc.push(musics[id].path);
-
-				alreadyAdded.add(id);
-				same = 0;
-			}
-		}
-
-		Music.updateVarsToMain();
-	}
-
-	static toggleAutoMode() {
-		autoMode = !autoMode;
-
-		MusicPlayer.clearPlayList();
-
-		if(!autoMode) {
-			document.getElementById('module-music-auto').style.color = 'red';
-			document.getElementById('module-music-more').style.display = 'initial';
-			return;
-		}
-
-		document.getElementById('module-music-auto').style.color = 'green';
-		document.getElementById('module-music-more').style.display = 'none';
-
-		Music.setPlaylistFromMostLiked(200, 5);
+		MusicPlayer.generatePlaylistFromMostLiked(musicScores, 200, 5);
 	}
 }
 window.addEventListener('load', Music.init);
