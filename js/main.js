@@ -18,100 +18,99 @@ class Music {
 		}
 
 		if(currentWindow === 'index') {
-			Music.changeMusic();
+			Music.initIndexModule();
 
-			ipcRenderer.on('listsUpdated', function() {
-				Music.drawMusicStatus();
-			});
-
-			// Volume
-			Music.updateVolume();
-			document.querySelector('#module-music-incVol')
-				.addEventListener('click', Music.increaseVolume);
-			document.querySelector('#module-music-decVol')
-				.addEventListener('click', Music.decreaseVolume);
-
-			// Next/Prev
-			document.querySelector('#module-music-prev')
-				.addEventListener('click', Music.prevMusic);
-			document.querySelector('#module-music-next')
-				.addEventListener('click', Music.nextMusic);
-
-			// Play/Pause
-			document.querySelector('#module-music-playPause')
-				.addEventListener('click', Music.togglePlayPause);
-
-			// Open window
-			document.getElementById('module-music-more').addEventListener('click', function() {
-				document.getElementById('music').click();
-			});
-
-			// Auto mode
-			document.querySelector('#module-music-auto')
-				.addEventListener('click', Music.randomPlayList);
-
-			// Clavier
-			document.addEventListener('keydown', function(e) {
-				switch(e.which) {
-					case 32: // Play/Pause
-						Music.togglePlayPause();
-						break;
-					case 39: // Next music ( Right Arrow )
-						Music.nextMusic();
-						break;
-					case 37: // Prev music ( Left Arrow )
-						Music.prevMusic();
-						break;
-					case 38: // Up volume ( Up Arrow )
-						Music.increaseVolume();
-						break;
-					case 40: // Down volume ( Down Arrow )
-						Music.decreaseVolume();
-						break;
-					default:
-					// Do nothing
-				}
-			});
-
-			// Mise a jour du temps
-			setInterval(Music.drawMusicStatus, 1000);
 		} else if(currentWindow === 'music') {
-			Music.regenerateAlbumList();
-
-			ipcRenderer.on('listsUpdated', function() {
-				Music.regenerateAlbumList();
-				Music.drawPlaylist();
-			});
-
-			if(MusicPlayer.isPlaylistRandom()) {
-				document.querySelector('#playlist-random')
-					.style.color = 'red';
-			}
-
-			// Clavier
-			document.addEventListener('keydown', function(e) {
-				switch(e.which) {
-					case 27: // Hide album details
-						Music.hideAlbum(e);
-						break;
-					default:
-					// Do nothing
-				}
-			});
-
-			document.querySelector('#playlist-refresh')
-				.addEventListener('click', Music.refreshList);
-			document.querySelector('#playlist-random')
-				.addEventListener('click', Music.toggleRandom);
-			document.querySelector('#playlist-clear')
-				.addEventListener('click', MusicPlayer.clearPlayList);
-			document.querySelector('#album-details')
-				.addEventListener('contextmenu', Music.hideAlbum);
-			document.querySelector('#album-details-close')
-				.addEventListener('click', Music.hideAlbum);
-
-			Music.drawPlaylist();
+			Music.initMusicPage();
 		}
+	}
+
+	static initIndexModule() {
+		Music.drawMusicStatus();
+
+		ipcRenderer.on('listsUpdated', function() {
+			Music.drawMusicStatus();
+			Music.drawPlayPause();
+		});
+
+		// Volume
+		Music.updateVolume();
+		document.querySelector('#module-music-incVol').addEventListener('click', Music.increaseVolume);
+		document.querySelector('#module-music-decVol').addEventListener('click', Music.decreaseVolume);
+
+		// Next/Prev
+		document.querySelector('#module-music-prev').addEventListener('click', Music.prevMusic);
+		document.querySelector('#module-music-next').addEventListener('click', Music.nextMusic);
+
+		// Play/Pause
+		document.querySelector('#module-music-playPause').addEventListener('click', Music.togglePlayPause);
+
+		// Open window
+		document.getElementById('module-music-more').addEventListener('click', function() {
+			document.getElementById('music').click();
+		});
+
+		// Auto mode
+		document.querySelector('#module-music-auto').addEventListener('click', Music.randomPlayList);
+
+		// Clavier
+		document.addEventListener('keydown', function(e) {
+			switch(e.which) {
+				case 32: // Play/Pause
+					Music.togglePlayPause();
+					break;
+				case 39: // Next music ( Right Arrow )
+					Music.nextMusic();
+					break;
+				case 37: // Prev music ( Left Arrow )
+					Music.prevMusic();
+					break;
+				case 38: // Up volume ( Up Arrow )
+					Music.increaseVolume();
+					break;
+				case 40: // Down volume ( Down Arrow )
+					Music.decreaseVolume();
+					break;
+				default:
+				// Do nothing
+			}
+		});
+
+		// Mise a jour du temps
+		setInterval(Music.drawMusicStatus, 1000);
+	}
+
+	static initMusicPage() {
+		Music.regenerateAlbumList();
+
+		ipcRenderer.on('listsUpdated', function() {
+			Music.regenerateAlbumList();
+			Music.drawPlaylist();
+		});
+
+		if(MusicPlayer.isPlaylistRandom()) {
+			document.querySelector('#playlist-random')
+				.style.color = 'red';
+		}
+
+		// Clavier
+		document.addEventListener('keydown', function(e) {
+			switch(e.which) {
+				case 27: // Hide album details
+					Music.hideAlbum(e);
+					break;
+				default:
+				// Do nothing
+			}
+		});
+
+		document.querySelector('#playlist-refresh').addEventListener('click', Music.refreshList);
+		document.querySelector('#playlist-random').addEventListener('click', Music.toggleRandom);
+		document.querySelector('#playlist-clear').addEventListener('click', MusicPlayer.clearPlayList);
+		document.querySelector('#album-details').addEventListener('contextmenu', Music.hideAlbum);
+		document.querySelector('#album-details-close').addEventListener('click', Music.hideAlbum);
+
+		Music.drawPlaylist();
 	}
 
 	static refreshList() {
@@ -121,22 +120,6 @@ class Music {
 	/**
 	 * Module on main window
 	 */
-	static changeMusic() {
-		Music.drawMusicStatus();
-
-		if(remote.getGlobal('playlistSrc').length === 0) {
-			return;
-		}
-
-		Music.applyMusicChange();
-
-		if(MusicPlayer.paused()) {
-			Music.drawPlayPause();
-		}
-
-		MusicPlayer.play();
-	}
-
 	static applyMusicChange() {
 		if(
 			MusicPlayer.getCurrentMusicPath() === '' ||
@@ -182,12 +165,12 @@ class Music {
 
 	static prevMusic() {
 		MusicPlayer.playPrevMusic();
-		Music.changeMusic();
+		Music.applyMusicChange();
 	}
 
 	static nextMusic() {
 		MusicPlayer.playNextMusic();
-		Music.changeMusic();
+		Music.applyMusicChange();
 	}
 
 	static togglePlayPause() {
