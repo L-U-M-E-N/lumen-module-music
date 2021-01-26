@@ -10,7 +10,7 @@
     },
     "mobile": {
         "module": true,
-        "window": false
+        "window": true
     },
     "config": {
         "directories": "string[]"
