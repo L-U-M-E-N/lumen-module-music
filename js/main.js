@@ -17,6 +17,7 @@ class Music {
 		if(typeof localMusicData.audioVolume === 'undefined') {
 			localMusicData.audioVolume = 50;
 		}
+		MusicPlayer.setVolume(localMusicData.audioVolume / 100)
 
 		if(!localMusicData.musicScores) {
 			localMusicData.musicScores = {};
