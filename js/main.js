@@ -1,6 +1,7 @@
 const ipcRenderer = require('electron').ipcRenderer;
 
 let MusicPlayer;
+let localMusicData = {};
 
 class Music {
 	/**
@@ -9,12 +10,16 @@ class Music {
 	static init() {
 		MusicPlayer = remote.getGlobal('Music');
 
-		if(typeof localStorage.audioVolume === 'undefined') {
-			localStorage.audioVolume = 50;
+		if(AppDataManager.exists('music', 'localMusicData')) {
+			localMusicData = AppDataManager.loadObject('music', 'localMusicData');
 		}
 
-		if(!localStorage.musicScores) {
-			localStorage.musicScores = '{}';
+		if(typeof localMusicData.audioVolume === 'undefined') {
+			localMusicData.audioVolume = 50;
+		}
+
+		if(!localMusicData.musicScores) {
+			localMusicData.musicScores = {};
 		}
 
 		if(currentWindow === 'index') {
@@ -130,38 +135,37 @@ class Music {
 			return;
 		}
 
-		const musicScores = JSON.parse(localStorage.musicScores);
-
-		if(!musicScores[MusicPlayer.getCurrentMusicPath()]) {
-			musicScores[MusicPlayer.getCurrentMusicPath()] = {
+		if(!localMusicData.musicScores[MusicPlayer.getCurrentMusicPath()]) {
+			localMusicData.musicScores[MusicPlayer.getCurrentMusicPath()] = {
 				count: 0,
 				scoreSum: 0
 			};
 		}
 
-		musicScores[MusicPlayer.getCurrentMusicPath()].count = parseInt(musicScores[MusicPlayer.getCurrentMusicPath()].count) + 1;
-		musicScores[MusicPlayer.getCurrentMusicPath()].scoreSum = parseInt(musicScores[MusicPlayer.getCurrentMusicPath()].scoreSum) + (MusicPlayer.getCurrentTime() / MusicPlayer.getDuration());
+		localMusicData.musicScores[MusicPlayer.getCurrentMusicPath()].count = parseInt(localMusicData.musicScores[MusicPlayer.getCurrentMusicPath()].count) + 1;
+		localMusicData.musicScores[MusicPlayer.getCurrentMusicPath()].scoreSum = parseInt(localMusicData.musicScores[MusicPlayer.getCurrentMusicPath()].scoreSum) + (MusicPlayer.getCurrentTime() / MusicPlayer.getDuration());
 
-		localStorage.musicScores = JSON.stringify(musicScores);
+		AppDataManager.saveObject('music', 'localMusicData', localMusicData);
 	}
 
 	static updateVolume() {
-		MusicPlayer.setVolume(localStorage.audioVolume / 100);
+		MusicPlayer.setVolume(localMusicData.audioVolume / 100);
 		document.querySelector('#module-music-volume')
-			.innerText = localStorage.audioVolume + '%';
+			.innerText = localMusicData.audioVolume + '%';
+		AppDataManager.saveObject('music', 'localMusicData', localMusicData);
 	}
 
 	static increaseVolume() {
-		if(localStorage.audioVolume >= 100) { return; }
+		if(localMusicData.audioVolume >= 100) { return; }
 
-		localStorage.audioVolume = parseInt(localStorage.audioVolume) + 2;
+		localMusicData.audioVolume += 2;
 		Music.updateVolume();
 	}
 
 	static decreaseVolume() {
-		if(localStorage.audioVolume <= 0) { return; }
+		if(localMusicData.audioVolume <= 0) { return; }
 
-		localStorage.audioVolume = parseInt(localStorage.audioVolume) - 2;
+		localMusicData.audioVolume -= 2;
 		Music.updateVolume();
 	}
 
@@ -322,7 +326,7 @@ class Music {
 		}
 
 		albums.sort((a,b) => {
-			if(a === 'MUSICPATH') { return -1; }
+			if(a === 'G:/Musique') { return -1; }
 
 			let albumA = a.split('/');
 			albumA = albumA[albumA.length - 1];
@@ -345,7 +349,7 @@ class Music {
 			if(albumName === undefined) { albumName = 'noimage'; }
 
 			albumHTML += '<div class="tile" id="' + i +
-				'" style="background-image: url(\'MUSICPATH/_icons/' + albumName +'.jpg\');">' + 
+				'" style="background-image: url(\'G:/Musique/_icons/' + albumName +'.jpg\');">' +
 				'<span class="add-album">+</span></div>';
 		}
 
@@ -369,13 +373,11 @@ class Music {
 	static randomPlayList() {
 		MusicPlayer.clearPlayList();
 
-		if(!localStorage.musicScores) {
-			localStorage.musicScores = '{}';
+		if(!localMusicData.musicScores) {
+			localMusicData.musicScores = {};
 		}
 
-		const musicScores = JSON.parse(localStorage.musicScores);
-
-		MusicPlayer.generatePlaylistFromMostLiked(musicScores, 200, 5);
+		MusicPlayer.generatePlaylistFromMostLiked(localMusicData.musicScores, 200, 5);
 	}
 }
 window.addEventListener('load', Music.init);
