@@ -17,14 +17,6 @@
 	display: none;
 }
 
-.module-monitoring-status {
-	display: inline-block;
-	margin-top: -165px;
-	width: 100%;
-	float: right;
-	font-size: 3rem;
-}
-
 #module-music-more,
 #module-music-prev, #module-music-next, 
 #module-music-decVol, #module-music-incVol,
