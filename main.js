@@ -24,6 +24,25 @@ class Music {
 		}
 	}
 
+	static _setupTimeouts() {
+		// First timeout to wait VLC start
+		clearTimeout(Music.nextTimeout);
+		Music.nextTimeout = setTimeout(() => {
+			// Second timeout to go th next music
+			clearTimeout(Music.nextTimeout);
+			Music.nextTimeout = setTimeout(Music.playNextMusic, 1000 * (Music.duration - Music.currentTime));
+		}, 2000);
+
+		clearInterval(Music.timeInterval);
+		Music.timeInterval = setInterval(() => {
+			Music.currentTime ++;
+
+			if(Music.currentTime > Music.duration) {
+				Music.currentTime = Music.duration;
+			}
+		}, 1000);
+	}
+
 	/**
 	 * Internal functions
 	 */
@@ -38,6 +57,7 @@ class Music {
 			if(!Music.playing) {
 				Music.playerWindow.webContents.send('play');
 				Music.playing = true;
+				Music._setupTimeouts();
 			}
 
 			return;
@@ -52,23 +72,8 @@ class Music {
 				Music.playerCurrSrc = filePath;
 				Music.playing = true;
 
-				// First timeout to wait VLC start
-				clearTimeout(Music.nextTimeout);
-				Music.nextTimeout = setTimeout(() => {
-					// Second timeout to go th next music
-					clearTimeout(Music.nextTimeout);
-					Music.nextTimeout = setTimeout(Music.playNextMusic, 1000 * (Music.duration));
-				}, 2000);
-
-				clearInterval(Music.timeInterval);
 				Music.currentTime = 0;
-				Music.timeInterval = setInterval(() => {
-					Music.currentTime ++;
-
-					if(Music.currentTime > Music.duration) {
-						Music.currentTime = Music.duration;
-					}
-				}, 1000);
+				Music._setupTimeouts();
 			} else {
 				Music.playNextMusic();
 			}
@@ -214,6 +219,8 @@ class Music {
 	static pause() {
 		Music.playerWindow.webContents.send('pause');
 		Music.playing = false;
+		clearTimeout(Music.nextTimeout);
+		clearInterval(Music.timeInterval);
 	}
 
 	static play() {
@@ -273,7 +280,7 @@ class Music {
 		musicList = {};
 		let timeout = -1;
 
-		fileScanner('MUSICPATH',/\.(mp3|ogg|flac|m4a)$/,function(filename) {
+		fileScanner('G:/Musique',/\.(mp3|ogg|flac|m4a)$/,function(filename) {
 			let albumName = filename.split('\\');
 			const musicName = albumName.pop();
 			albumName     = albumName.join('/');
