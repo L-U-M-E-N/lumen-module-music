@@ -1,6 +1,5 @@
 const window = require('electron').BrowserWindow;
 
-const Audic = require('audic');
 const fs = require('fs');
 
 // Get files
@@ -15,6 +14,16 @@ global.playlistCurrent    = 0;
 global.playlistRandom     = false;
 
 class Music {
+	static _createWindow() {
+		if(!Music.playerWindow) {
+			Music.playerWindow = createWindowFromModule('Music-player', 'music', 'views/music-player.html', 1, 1, { show: false });
+
+			ipcMain.on('duration', (_, duration) => {
+				Music.duration = duration;
+			});
+		}
+	}
+
 	/**
 	 * Internal functions
 	 */
@@ -25,36 +34,41 @@ class Music {
 
 		filePath = filePath.replaceAll('/', '\\');
 
-		if(Music.player && Music.player.src === filePath) {
-			if(!Music.player.playing) {
-				await Music.player.play();
+		if(Music.playerCurrSrc === filePath) {
+			if(!Music.playing) {
+				Music.playerWindow.webContents.send('play');
+				Music.playing = true;
 			}
 
-			return;
-		}
-
-		if(Music.mutex) {
 			return;
 		}
 
 		console.log('Playing ', filePath);
 		try {
 			if (fs.existsSync(filePath)) {
-				Music.mutex = true;
-				await Music._stop();
+				Music._createWindow();
 
-				Music.player = new Audic(filePath);
-				await Music.player.play();
-
-				Music.mutex = false;
+				Music.playerWindow.webContents.send('play', filePath);
+				Music.playerCurrSrc = filePath;
+				Music.playing = true;
 
 				// First timeout to wait VLC start
 				clearTimeout(Music.nextTimeout);
 				Music.nextTimeout = setTimeout(() => {
 					// Second timeout to go th next music
 					clearTimeout(Music.nextTimeout);
-					Music.nextTimeout = setTimeout(Music.playNextMusic, 1000 * (Music.player.duration));
+					Music.nextTimeout = setTimeout(Music.playNextMusic, 1000 * (Music.duration));
 				}, 2000);
+
+				clearInterval(Music.timeInterval);
+				Music.currentTime = 0;
+				Music.timeInterval = setInterval(() => {
+					Music.currentTime ++;
+
+					if(Music.currentTime > Music.duration) {
+						Music.currentTime = Music.duration;
+					}
+				}, 1000);
 			} else {
 				Music.playNextMusic();
 			}
@@ -95,11 +109,7 @@ class Music {
 	}
 
 	static async _stop() {
-		if(Music.player) {
-			await Music.player.destroy();
-			Music.player = null;
-		}
-
+		Music.playing = false;
 		Music._notifyClient();
 	}
 
@@ -202,9 +212,8 @@ class Music {
 	}
 
 	static pause() {
-		if(Music.player) {
-			Music.player.pause();
-		}
+		Music.playerWindow.webContents.send('pause');
+		Music.playing = false;
 	}
 
 	static play() {
@@ -254,9 +263,10 @@ class Music {
 	}
 
 	static setVolume(volume) {
-		if(Music.player) {
-			Music.player.volume = volume;
-		}
+		Music._createWindow();
+
+		Music.playerWindow.webContents.send('volume', volume);
+		Music.volume = volume;
 	}
 
 	static updateFilesList() {
@@ -283,11 +293,11 @@ class Music {
 	 * Exposed Getters
 	 */
 	static getCurrentTime() {
-		if(!Music.player) {
+		if(!Music.currentTime) {
 			return 0;
 		}
 
-		return Music.player._currentTime;
+		return Music.currentTime;
 	}
 
 	static getCurrentMusicTitle() {
@@ -299,11 +309,11 @@ class Music {
 	}
 
 	static getDuration() {
-		if(!Music.player) {
+		if(!Music.duration) {
 			return 0;
 		}
 
-		return Music.player.duration;
+		return Music.duration;
 	}
 
 	static getPlaylist() {
@@ -311,11 +321,11 @@ class Music {
 	}
 
 	static getVolume() {
-		if(!Music.player) {
+		if(!Music.volume) {
 			return 0;
 		}
 
-		return Music.player.volume;
+		return Music.volume;
 	}
 
 	static async isPlaylistRandom() {
@@ -323,11 +333,11 @@ class Music {
 	}
 
 	static paused() {
-		if(!Music.player) {
+		if(!Music.playerWindow) {
 			return true;
 		}
 
-		return !Music.player.playing;
+		return !Music.playing;
 	}
 }
 
