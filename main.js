@@ -1,24 +1,23 @@
 const window = require('electron').BrowserWindow;
-
 const fs = require('fs');
 
 // Get files
-global.musicList = {};
+let musicList = {};
 
 // Playlist manager
-global.playlist           = [];
-global.playlistSrc        = [];
-global.orderedPlaylist    = [];
-global.orderedPlaylistSrc = [];
-global.playlistCurrent    = 0;
-global.playlistRandom     = false;
+let playlist           = [];
+let playlistSrc        = [];
+let orderedPlaylist    = [];
+let orderedPlaylistSrc = [];
+let playlistCurrent    = 0;
+let playlistRandom     = false;
 
 class Music {
 	static _createWindow() {
 		if(!Music.playerWindow) {
-			Music.playerWindow = createWindowFromModule('Music-player', 'music', 'views/music-player.html', 1, 1, { show: false });
+			Music.playerWindow = createWindowFromModule('Music-player', 'music', 'views/music-player.html', /*1, 1, { show: false }*/);
 
-			ipcMain.on('duration', (_, duration) => {
+			ipcMain.on('Music-duration', (_, duration) => {
 				Music.duration = duration;
 			});
 		}
@@ -55,7 +54,7 @@ class Music {
 
 		if(Music.playerCurrSrc === filePath) {
 			if(!Music.playing) {
-				Music.playerWindow.webContents.send('play');
+				Music.playerWindow.webContents.send('Music-play');
 				Music.playing = true;
 				Music._setupTimeouts();
 			}
@@ -68,7 +67,7 @@ class Music {
 			if (fs.existsSync(filePath)) {
 				Music._createWindow();
 
-				Music.playerWindow.webContents.send('play', filePath);
+				Music.playerWindow.webContents.send('Music-play', filePath);
 				Music.playerCurrSrc = filePath;
 				Music.playing = true;
 
@@ -84,7 +83,7 @@ class Music {
 		}
 	}
 
-	static _shufflePlaylist() {
+	static shufflePlaylist() {
 		let j, x;
 
 		for (let i = playlist.length - 1; i > 0; i--) {
@@ -110,7 +109,7 @@ class Music {
 
 	static async _notifyClient() {
 		if(!window.getFocusedWindow()) { return; }
-		window.getFocusedWindow().webContents.send('listsUpdated', {});
+		window.getFocusedWindow().webContents.send('Music-listsUpdated', {});
 	}
 
 	static async _stop() {
@@ -148,7 +147,7 @@ class Music {
 			playlistSrc = orderedPlaylistSrc.slice();
 
 			if(playlistRandom) {
-				Music._shufflePlaylist();
+				Music.shufflePlaylist();
 			}
 
 			Music._notifyClient();
@@ -217,7 +216,7 @@ class Music {
 	}
 
 	static pause() {
-		Music.playerWindow.webContents.send('pause');
+		Music.playerWindow.webContents.send('Music-pause');
 		Music.playing = false;
 		clearTimeout(Music.nextTimeout);
 		clearInterval(Music.timeInterval);
@@ -226,6 +225,14 @@ class Music {
 	static play() {
 		if(playlistSrc.length > 0) {
 			Music._playMusic(playlistSrc[playlistCurrent]);
+		}
+	}
+
+	static togglePlayPause() {
+		if(Music.paused()) {
+			Music.play();
+		} else {
+			Music.pause();
 		}
 	}
 
@@ -272,7 +279,7 @@ class Music {
 	static setVolume(volume) {
 		Music._createWindow();
 
-		Music.playerWindow.webContents.send('volume', volume);
+		Music.playerWindow.webContents.send('Music-volume', volume);
 		Music.volume = volume;
 	}
 
@@ -323,10 +330,6 @@ class Music {
 		return Music.duration;
 	}
 
-	static getPlaylist() {
-		return playlist;
-	}
-
 	static getVolume() {
 		if(!Music.volume) {
 			return 0;
@@ -348,6 +351,29 @@ class Music {
 	}
 }
 
-global.Music = Music;
-
 Music.updateFilesList();
+
+// EVENTS
+ipcMain.on('Music-addAlbum', (_, albumid) => Music.addAlbum(albumid));
+ipcMain.on('Music-addMusic', (_, albumid, musicid) => Music.addMusic(albumid, musicid));
+ipcMain.on('Music-chooseMusic', (_, currId) => Music.chooseMusic(currId));
+ipcMain.on('Music-clearPlayList', Music.clearPlayList);
+ipcMain.on('Music-generatePlaylistFromMostLiked', (_, musicScores,musicCount, randomInterval) => Music.generatePlaylistFromMostLiked(musicScores,musicCount, randomInterval));
+ipcMain.on('Music-playPrevMusic', Music.playPrevMusic);
+ipcMain.on('Music-playNextMusic', Music.playNextMusic);
+ipcMain.on('Music-removeFromPlayList', (_, currId) => Music.removeFromPlayList(currId));
+ipcMain.on('Music-setVolume', (_, volume) => Music.setVolume(volume));
+ipcMain.on('Music-shufflePlaylist', Music.shufflePlaylist);
+ipcMain.on('Music-togglePlayPause', Music.togglePlayPause);
+ipcMain.on('Music-updateFilesList', Music.updateFilesList);
+
+ipcMain.handle('Music-getCurrentMusicPath', Music.getCurrentMusicPath);
+ipcMain.handle('Music-getCurrentMusicTitle', Music.getCurrentMusicTitle);
+ipcMain.handle('Music-getCurrentTime', Music.getCurrentTime);
+ipcMain.handle('Music-getDuration', Music.getDuration);
+ipcMain.handle('Music-isPlaylistRandom', Music.isPlaylistRandom);
+ipcMain.handle('Music-paused', Music.paused);
+ipcMain.handle('Music-musicList', () => musicList);
+ipcMain.handle('Music-playlist', () => playlist);
+ipcMain.handle('Music-playlistSrc', () => playlistSrc);
+ipcMain.handle('Music-playlistCurrent', () => playlistCurrent);

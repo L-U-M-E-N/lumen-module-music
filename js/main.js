@@ -1,15 +1,10 @@
-const ipcRenderer = require('electron').ipcRenderer;
-
-let MusicPlayer;
 let localMusicData = {};
 
 class Music {
 	/**
 	 * Load
 	 */
-	static init() {
-		MusicPlayer = remote.getGlobal('Music');
-
+	static async init() {
 		if(AppDataManager.exists('music', 'localMusicData')) {
 			localMusicData = AppDataManager.loadObject('music', 'localMusicData');
 		}
@@ -17,26 +12,26 @@ class Music {
 		if(typeof localMusicData.audioVolume === 'undefined') {
 			localMusicData.audioVolume = 50;
 		}
-		MusicPlayer.setVolume(localMusicData.audioVolume / 100)
+		Music.updateVolume();
 
 		if(!localMusicData.musicScores) {
 			localMusicData.musicScores = {};
 		}
 
 		if(currentWindow === 'index') {
-			Music.initIndexModule();
+			await Music.initIndexModule();
 
 		} else if(currentWindow === 'music') {
-			Music.initMusicPage();
+			await Music.initMusicPage();
 		}
 	}
 
-	static initIndexModule() {
-		Music.drawMusicStatus();
+	static async initIndexModule() {
+		await Music.drawMusicStatus();
 
-		ipcRenderer.on('listsUpdated', function() {
-			Music.drawMusicStatus();
-			Music.drawPlayPause();
+		ipcRenderer.on('Music-listsUpdated', async function() {
+			await Music.drawMusicStatus();
+			await Music.drawPlayPause();
 		});
 
 		// Volume
@@ -60,16 +55,16 @@ class Music {
 		document.querySelector('#module-music-auto').addEventListener('click', Music.randomPlayList);
 
 		// Clavier
-		document.addEventListener('keydown', function(e) {
+		document.addEventListener('keydown', async function(e) {
 			switch(e.which) {
 				case 32: // Play/Pause
-					Music.togglePlayPause();
+					await Music.togglePlayPause();
 					break;
 				case 39: // Next music ( Right Arrow )
-					Music.nextMusic();
+					await Music.nextMusic();
 					break;
 				case 37: // Prev music ( Left Arrow )
-					Music.prevMusic();
+					await Music.prevMusic();
 					break;
 				case 38: // Up volume ( Up Arrow )
 					Music.increaseVolume();
@@ -86,15 +81,15 @@ class Music {
 		setInterval(Music.drawMusicStatus, 1000);
 	}
 
-	static initMusicPage() {
-		Music.regenerateAlbumList();
+	static async initMusicPage() {
+		await Music.regenerateAlbumList();
 
-		ipcRenderer.on('listsUpdated', function() {
-			Music.regenerateAlbumList();
-			Music.drawPlaylist();
+		ipcRenderer.on('Music-listsUpdated', async function() {
+			await Music.regenerateAlbumList();
+			await Music.drawPlaylist();
 		});
 
-		if(MusicPlayer.isPlaylistRandom()) {
+		if(await ipcRenderer.invoke('Music-isPlaylistRandom')) {
 			document.querySelector('#playlist-random')
 				.style.color = 'red';
 		}
@@ -112,47 +107,55 @@ class Music {
 
 		document.querySelector('#playlist-refresh').addEventListener('click', Music.refreshList);
 		document.querySelector('#playlist-random').addEventListener('click', Music.toggleRandom);
-		document.querySelector('#playlist-clear').addEventListener('click', MusicPlayer.clearPlayList);
+		document.querySelector('#playlist-clear').addEventListener('click', ipcRenderer.send('Music-clearPlayList'));
 		document.querySelector('#album-details').addEventListener('contextmenu', Music.hideAlbum);
 		document.querySelector('#album-details-close').addEventListener('click', Music.hideAlbum);
 
-		Music.drawPlaylist();
+		await Music.drawPlaylist();
 	}
 
 	static refreshList() {
-		MusicPlayer.updateFilesList();
+		ipcRenderer.send('Music-updateFilesList');
 	}
 
 	/**
 	 * Module on main window
 	 */
-	static applyMusicChange() {
+	static async applyMusicChange() {
 		// TODO: Migrate to server side that method
 
+		const currentPath = await ipcRenderer.invoke('Music-getCurrentMusicPath');
+		const duration = await ipcRenderer.invoke('Music-getDuration');
+
 		if(
-			MusicPlayer.getCurrentMusicPath() === '' ||
-			Number.isNaN(MusicPlayer.getDuration())
+			currentPath === '' ||
+			Number.isNaN(duration)
 		) {
 			return;
 		}
 
-		if(!localMusicData.musicScores[MusicPlayer.getCurrentMusicPath()]) {
-			localMusicData.musicScores[MusicPlayer.getCurrentMusicPath()] = {
+		if(!localMusicData.musicScores[currentPath]) {
+			localMusicData.musicScores[currentPath] = {
 				count: 0,
 				scoreSum: 0
 			};
 		}
 
-		localMusicData.musicScores[MusicPlayer.getCurrentMusicPath()].count = parseInt(localMusicData.musicScores[MusicPlayer.getCurrentMusicPath()].count) + 1;
-		localMusicData.musicScores[MusicPlayer.getCurrentMusicPath()].scoreSum = parseInt(localMusicData.musicScores[MusicPlayer.getCurrentMusicPath()].scoreSum) + (MusicPlayer.getCurrentTime() / MusicPlayer.getDuration());
+		const currentTime = await ipcRenderer.invoke('Music-getCurrentTime');
+
+		localMusicData.musicScores[currentPath].count = parseInt(localMusicData.musicScores[currentPath].count) + 1;
+		localMusicData.musicScores[currentPath].scoreSum = parseInt(localMusicData.musicScores[currentPath].scoreSum) + (currentTime / duration);
 
 		AppDataManager.saveObject('music', 'localMusicData', localMusicData);
 	}
 
 	static updateVolume() {
-		MusicPlayer.setVolume(localMusicData.audioVolume / 100);
-		document.querySelector('#module-music-volume')
-			.innerText = localMusicData.audioVolume + '%';
+		ipcRenderer.send('Music-setVolume', localMusicData.audioVolume / 100);
+
+		const volDOM = document.querySelector('#module-music-volume');
+		if(volDOM) {
+			volDOM.innerText = localMusicData.audioVolume + '%';
+		}
 		AppDataManager.saveObject('music', 'localMusicData', localMusicData);
 	}
 
@@ -170,51 +173,50 @@ class Music {
 		Music.updateVolume();
 	}
 
-	static prevMusic() {
-		MusicPlayer.playPrevMusic();
-		Music.applyMusicChange();
+	static async prevMusic() {
+		await Music.applyMusicChange();
+		ipcRenderer.send('Music-playPrevMusic');
 	}
 
-	static nextMusic() {
-		MusicPlayer.playNextMusic();
-		Music.applyMusicChange();
+	static async nextMusic() {
+		await Music.applyMusicChange();
+		ipcRenderer.send('Music-playNextMusic');
 	}
 
-	static togglePlayPause() {
-		if(MusicPlayer.paused()) {
-			MusicPlayer.play();
-		} else {
-			MusicPlayer.pause();
-		}
+	static async togglePlayPause() {
+		ipcRenderer.send('Music-togglePlayPause');
 
-		Music.drawPlayPause();
+		await Music.drawPlayPause();
 	}
 
-	static drawMusicStatus(checkPaused=true) {
-		if(checkPaused && MusicPlayer.paused()) { return; }
+	static async drawMusicStatus(checkPaused=true) {
+		if(checkPaused && await ipcRenderer.invoke('Music-paused')) { return; }
 
-		if(remote.getGlobal('playlistSrc').length === 0) {
+		if(await ipcRenderer.invoke('Music-playlistSrc').length === 0) {
 			document.querySelector('#module-music-title').innerText = 'Empty playlist'; // @TODO: locales
 			document.querySelector('#module-music-time').innerText = '0:00/0:00';
-			Music.drawPlayPause();
+			await Music.drawPlayPause();
 			return;
 		}
 
-		let secCurr = parseInt(('' + MusicPlayer.getCurrentTime()).split('.')[0])%60;
+		const currentTime = await ipcRenderer.invoke('Music-getCurrentTime');
+		const duration = await ipcRenderer.invoke('Music-getDuration');
+
+		let secCurr = parseInt(('' + currentTime).split('.')[0])%60;
 		if(secCurr < 10) { secCurr = '0' + secCurr; }
 
-		let secDuration = parseInt(('' + MusicPlayer.getDuration()).split('.')[0])%60;
+		let secDuration = parseInt(('' + duration).split('.')[0])%60;
 		if(secDuration < 10) { secDuration = '0' + secDuration; }
 
 		document.querySelector('#module-music-time')
-			.innerText = Math.floor(MusicPlayer.getCurrentTime()/60) + ':' + secCurr +
-				'/' + Math.floor(MusicPlayer.getDuration()/60) + ':' + secDuration;
+			.innerText = Math.floor(currentTime/60) + ':' + secCurr +
+				'/' + Math.floor(duration/60) + ':' + secDuration;
 
-		document.querySelector('#module-music-title').innerText = MusicPlayer.getCurrentMusicTitle();
+		document.querySelector('#module-music-title').innerText = await ipcRenderer.invoke('Music-getCurrentMusicTitle');
 	}
 
-	static drawPlayPause() {
-		if(MusicPlayer.paused()) {
+	static async drawPlayPause() {
+		if(await ipcRenderer.invoke('Music-paused')) {
 			document.querySelector('#module-music-playPause')
 				.innerHTML = '▶';
 		} else {
@@ -226,14 +228,15 @@ class Music {
 	/**
 	 * Music window
 	 */
-	static drawPlaylist() {
+	static async drawPlaylist() {
 		if(!document.querySelector('#music-list')) { return; }
 
 		let playlistHTML = '';
 
-		const playlist = MusicPlayer.getPlaylist();
+		const playlist = await ipcRenderer.invoke('Music-playlist');
+		const currentPath = await ipcRenderer.invoke('Music-getCurrentMusicPath');
 		for(let i=0; i < playlist.length; i++) {
-			if(playlist[i] === MusicPlayer.getCurrentMusicPath()) {
+			if(playlist[i] === currentPath) {
 				playlistHTML += '<li id="' + i + '"><b>' + playlist[i] + '</b></li>';
 			} else {
 				playlistHTML += '<li  id="' + i + '">' + playlist[i] + '</li>';
@@ -246,7 +249,7 @@ class Music {
 		for(let m=0; m<musicsInPlaylist.length; m++) {
 			musicsInPlaylist[m].addEventListener('click', function() {
 				const currId = parseInt(this.id);
-				MusicPlayer.chooseMusic(currId);
+				ipcRenderer.send('Music-chooseMusic', currId);
 			});
 
 			musicsInPlaylist[m].addEventListener('contextmenu', function() {
@@ -254,17 +257,18 @@ class Music {
 				lastRemove = Date.now();
 
 				const currId = parseInt(this.id);
-				MusicPlayer.removeFromPlayList(currId);
+				ipcRenderer.send('Music-removeFromPlayList', currId);
 			});
 		}
 	}
 
-	static drawAlbum(albumID) {
+	static async drawAlbum(albumID) {
 		let content = '';
 
 		// Generer texte
-		for(let i=0; i<remote.getGlobal('musicList')[albumID].length; i++) {
-			content += '<li class="album-details-music" albumid="' + albumID +'" musicid="' + i +'">' + remote.getGlobal('musicList')[albumID][i] + '</li>';
+		const musicList = await ipcRenderer.invoke('Music-musicList');
+		for(let i=0; i< musicList[albumID].length; i++) {
+			content += '<li class="album-details-music" albumid="' + albumID +'" musicid="' + i +'">' + musicList[albumID][i] + '</li>';
 		}
 
 		document.querySelector('#album-details').innerHTML = content;
@@ -272,7 +276,7 @@ class Music {
 		const musicsDOM = document.querySelectorAll('.album-details-music');
 		for(let m=0; m<musicsDOM.length; m++) {
 			musicsDOM[m].addEventListener('click', function(e) {
-				MusicPlayer.addMusic(this.getAttribute('albumid'), this.getAttribute('musicid'));
+				ipcRenderer.send('Music-addMusic', this.getAttribute('albumid'), this.getAttribute('musicid'));
 			});
 		}
 
@@ -290,15 +294,15 @@ class Music {
 		e.preventDefault();
 	}
 
-	static toggleRandom() {
+	static async toggleRandom() {
 		// TODO: Migrate to server side that method
-		playlistRandom = !MusicPlayer.isPlaylistRandom();
+		const playlistRandom = !(await ipcRenderer.invoke('Music-isPlaylistRandom'));
 		if(playlistRandom) {
-			MusicPlayer._shufflePlaylist();
+			ipcRenderer.send('Music-shufflePlaylist');
 			document.querySelector('#playlist-random')
 				.style.color = 'red';
 		} else {
-			playlistCurrent = remote.getGlobal('playlistCurrent');
+			playlistCurrent = await ipcRenderer.invoke('Music-playlistCurrent');
 			for(let i=0; i<orderedPlaylistSrc.length; i++) {
 				if(orderedPlaylistSrc[i] === playlistSrc[playlistCurrent]) {
 					playlistCurrent = i;
@@ -313,21 +317,20 @@ class Music {
 				.style.color = 'white';
 		}
 
-		Music.updateVarsToMain();
-		Music.drawPlaylist();
-		ipcRenderer.send('updateRandom', playlistRandom);
+		await Music.drawPlaylist();
+		ipcRenderer.send('Music-updateRandom', playlistRandom);
 	}
 
-	static regenerateAlbumList() {
+	static async regenerateAlbumList() {
 		let albumHTML = '';
 		const albums = [];
 
-		for(const i in remote.getGlobal('musicList')) {
+		for(const i in await ipcRenderer.invoke('Music-musicList')) {
 			albums.push(i);
 		}
 
 		albums.sort((a,b) => {
-			if(a === 'G:/Musique') { return -1; }
+			if(a === 'MUSICPATH') { return -1; }
 
 			let albumA = a.split('/');
 			albumA = albumA[albumA.length - 1];
@@ -350,7 +353,7 @@ class Music {
 			if(albumName === undefined) { albumName = 'noimage'; }
 
 			albumHTML += '<div class="tile" id="' + i +
-				'" style="background-image: url(\'G:/Musique/_icons/' + albumName +'.jpg\');">' +
+				'" style="background-image: url(\'MUSICPATH/_icons/' + albumName +'.jpg\');">' +
 				'<span class="add-album">+</span></div>';
 		}
 
@@ -358,27 +361,27 @@ class Music {
 
 		const albumsDOM = document.querySelectorAll('.tile');
 		for(let a=0; a<albumsDOM.length; a++) {
-			albumsDOM[a].addEventListener('click', function(e) {
+			albumsDOM[a].addEventListener('click', async function(e) {
 
 				if(e.target.classList.contains('add-album')) {
 					// Add an album
-					MusicPlayer.addAlbum(this.id);
+					ipcRenderer.send('Music-addAlbum', this.id);
 				} else {
 					// Show an album details
-					Music.drawAlbum(this.id);
+					await Music.drawAlbum(this.id);
 				}
 			});
 		}
 	}
 
 	static randomPlayList() {
-		MusicPlayer.clearPlayList();
+		ipcRenderer.send('Music-clearPlayList');
 
 		if(!localMusicData.musicScores) {
 			localMusicData.musicScores = {};
 		}
 
-		MusicPlayer.generatePlaylistFromMostLiked(localMusicData.musicScores, 200, 5);
+		ipcRenderer.send('Music-generatePlaylistFromMostLiked', localMusicData.musicScores, 200, 5);
 	}
 }
 window.addEventListener('load', Music.init);

@@ -3,24 +3,22 @@
 <script type="text/javascript">
 	const ipcRenderer = require('electron').ipcRenderer;
 
-	ipcRenderer.on('play', function(_, path) {
+	ipcRenderer.on('Music-play', function(_, path) {
 		if(typeof path != 'undefined') {
 			audio.src = path;
 		}
 		audio.play();
 
-		ipcRenderer.send('duration', audio.duration)
-
 		audio.addEventListener('loadedmetadata', () => {
-		    ipcRenderer.send('duration', audio.duration)
+		    ipcRenderer.send('Music-duration', audio.duration)
 		});
 	});
 
-	ipcRenderer.on('pause', function() {
+	ipcRenderer.on('Music-pause', function() {
 		audio.pause();
 	});
 
-	ipcRenderer.on('volume', function(_, volume) {
+	ipcRenderer.on('Music-volume', function(_, volume) {
 		audio.volume = volume;
 	});
 </script>
