@@ -295,30 +295,18 @@ class Music {
 	}
 
 	static async toggleRandom() {
-		// TODO: Migrate to server side that method
-		const playlistRandom = !(await ipcRenderer.invoke('Music-isPlaylistRandom'));
+		await ipcRenderer.invoke('Music-toggleRandom');
+
+		const playlistRandom = await ipcRenderer.invoke('Music-isPlaylistRandom');
 		if(playlistRandom) {
-			ipcRenderer.send('Music-shufflePlaylist');
 			document.querySelector('#playlist-random')
 				.style.color = 'red';
 		} else {
-			playlistCurrent = await ipcRenderer.invoke('Music-playlistCurrent');
-			for(let i=0; i<orderedPlaylistSrc.length; i++) {
-				if(orderedPlaylistSrc[i] === playlistSrc[playlistCurrent]) {
-					playlistCurrent = i;
-					break;
-				}
-			}
-
-			playlist    = orderedPlaylist.slice();
-			playlistSrc = orderedPlaylistSrc.slice();
-
 			document.querySelector('#playlist-random')
 				.style.color = 'white';
 		}
 
 		await Music.drawPlaylist();
-		ipcRenderer.send('Music-updateRandom', playlistRandom);
 	}
 
 	static async regenerateAlbumList() {

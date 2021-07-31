@@ -338,8 +338,29 @@ class Music {
 		return Music.volume;
 	}
 
-	static async isPlaylistRandom() {
+	static isPlaylistRandom() {
 		return playlistRandom;
+	}
+
+	static toggleRandom() {
+		playlistRandom = !playlistRandom;
+
+		if(playlistRandom) {
+			Music.shufflePlaylist();
+		} else {
+			for(let i=0; i<orderedPlaylistSrc.length; i++) {
+				if(orderedPlaylistSrc[i] === playlistSrc[playlistCurrent]) {
+					playlistCurrent = i;
+					break;
+				}
+			}
+
+			playlist    = orderedPlaylist.slice();
+			playlistSrc = orderedPlaylistSrc.slice();
+		}
+
+		Music._notifyClient();
+
 	}
 
 	static paused() {
@@ -377,3 +398,4 @@ ipcMain.handle('Music-musicList', () => musicList);
 ipcMain.handle('Music-playlist', () => playlist);
 ipcMain.handle('Music-playlistSrc', () => playlistSrc);
 ipcMain.handle('Music-playlistCurrent', () => playlistCurrent);
+ipcMain.handle('Music-toggleRandom', Music.toggleRandom);
