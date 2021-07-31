@@ -15,7 +15,7 @@ let playlistRandom     = false;
 class Music {
 	static _createWindow() {
 		if(!Music.playerWindow) {
-			Music.playerWindow = createWindowFromModule('Music-player', 'music', 'views/music-player.html', /*1, 1, { show: false }*/);
+			Music.playerWindow = createWindowFromModule('Music-player', 'music', 'views/music-player.html', 1, 1, { show: false });
 
 			ipcMain.on('Music-duration', (_, duration) => {
 				Music.duration = duration;
