@@ -5,8 +5,8 @@ class Music {
 	 * Load
 	 */
 	static async init() {
-		if(AppDataManager.exists('music', 'localMusicData')) {
-			localMusicData = AppDataManager.loadObject('music', 'localMusicData');
+		if(await AppDataManager.exists('music', 'localMusicData')) {
+			localMusicData = await AppDataManager.loadObject('music', 'localMusicData');
 		}
 
 		if(typeof localMusicData.audioVolume === 'undefined') {
@@ -146,31 +146,31 @@ class Music {
 		localMusicData.musicScores[currentPath].count = parseInt(localMusicData.musicScores[currentPath].count) + 1;
 		localMusicData.musicScores[currentPath].scoreSum = parseInt(localMusicData.musicScores[currentPath].scoreSum) + (currentTime / duration);
 
-		AppDataManager.saveObject('music', 'localMusicData', localMusicData);
+		await AppDataManager.saveObject('music', 'localMusicData', localMusicData);
 	}
 
-	static updateVolume() {
+	static async updateVolume() {
 		ipcRenderer.send('Music-setVolume', localMusicData.audioVolume / 100);
 
 		const volDOM = document.querySelector('#module-music-volume');
 		if(volDOM) {
 			volDOM.innerText = localMusicData.audioVolume + '%';
 		}
-		AppDataManager.saveObject('music', 'localMusicData', localMusicData);
+		await AppDataManager.saveObject('music', 'localMusicData', localMusicData);
 	}
 
-	static increaseVolume() {
+	static async increaseVolume() {
 		if(localMusicData.audioVolume >= 100) { return; }
 
 		localMusicData.audioVolume += 2;
-		Music.updateVolume();
+		await Music.updateVolume();
 	}
 
-	static decreaseVolume() {
+	static async decreaseVolume() {
 		if(localMusicData.audioVolume <= 0) { return; }
 
 		localMusicData.audioVolume -= 2;
-		Music.updateVolume();
+		await Music.updateVolume();
 	}
 
 	static async prevMusic() {
