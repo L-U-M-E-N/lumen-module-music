@@ -1,5 +1,4 @@
-const window = require('electron').BrowserWindow;
-const fs = require('fs');
+import fs from 'fs';
 
 // Get files
 let musicList = {};
@@ -108,8 +107,8 @@ class Music {
 	}
 
 	static async _notifyClient() {
-		if(!window.getFocusedWindow()) { return; }
-		window.getFocusedWindow().webContents.send('Music-listsUpdated', {});
+		if(!BrowserWindow.getFocusedWindow()) { return; }
+		BrowserWindow.getFocusedWindow().webContents.send('Music-listsUpdated', {});
 	}
 
 	static async _stop() {
