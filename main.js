@@ -286,7 +286,7 @@ class Music {
 		musicList = {};
 		let timeout = -1;
 
-		fileScanner('G:/Musique',/\.(mp3|ogg|flac|m4a)$/,function(filename) {
+		fileScanner('MUSICPATH',/\.(mp3|ogg|flac|m4a|wav)$/,function(filename) {
 			let albumName = filename.split('\\');
 			const musicName = albumName.pop();
 			albumName     = albumName.join('/');
