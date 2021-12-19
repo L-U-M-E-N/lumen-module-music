@@ -286,20 +286,23 @@ class Music {
 		musicList = {};
 		let timeout = -1;
 
-		fileScanner('MUSICPATH',/\.(mp3|ogg|flac|m4a|wav)$/,function(filename) {
-			let albumName = filename.split('\\');
-			const musicName = albumName.pop();
-			albumName     = albumName.join('/');
+		const directories = ConfigManager.get('music', 'directories');
+		for(const directory of directories) {
+			fileScanner(directory,/\.(mp3|ogg|flac|m4a|wav)$/,function(filename) {
+				let albumName = filename.split('\\');
+				const musicName = albumName.pop();
+				albumName     = albumName.join('/');
 
-			if(musicList[albumName] === undefined) { musicList[albumName] = []; }
-			musicList[albumName].push(musicName);
+				if(musicList[albumName] === undefined) { musicList[albumName] = []; }
+				musicList[albumName].push(musicName);
 
-			// Notify client only when we don't have files added to the list anymore
-			clearTimeout(timeout);
-			timeout = setTimeout(function() {
-				Music._notifyClient();
-			}, 250);
-		});
+				// Notify client only when we don't have files added to the list anymore
+				clearTimeout(timeout);
+				timeout = setTimeout(function() {
+					Music._notifyClient();
+				}, 250);
+			});
+		}
 	}
 
 	/**

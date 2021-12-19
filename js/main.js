@@ -317,8 +317,10 @@ class Music {
 			albums.push(i);
 		}
 
+		const directories = await ConfigManager.get('music', 'directories');
+
 		albums.sort((a,b) => {
-			if(a === 'MUSICPATH') { return -1; }
+			if(directories.includes(a)) { return -1; }
 
 			let albumA = a.split('/');
 			albumA = albumA[albumA.length - 1];
@@ -340,8 +342,9 @@ class Music {
 			albumName = albumName[albumName.length - 1];
 			if(albumName === undefined) { albumName = 'noimage'; }
 
+			const directory = directories[0]; // TODO: support multiple folders here
 			albumHTML += '<div class="tile" id="' + i +
-				'" style="background-image: url(\'MUSICPATH/_icons/' + albumName +'.jpg\');">' +
+				'" style="background-image: url(\'' + directory + '/_icons/' + albumName +'.jpg\');">' +
 				'<span class="add-album">+</span></div>';
 		}
 
