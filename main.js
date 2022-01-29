@@ -303,6 +303,10 @@ class Music {
 				}, 250);
 			});
 		}
+
+		if(directories.length === 0) {
+			Music._notifyClient();
+		}
 	}
 
 	/**
