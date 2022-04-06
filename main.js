@@ -288,7 +288,7 @@ class Music {
 
 		const directories = ConfigManager.get('music', 'directories');
 		for(const directory of directories) {
-			fileScanner(directory,/\.(mp3|ogg|flac|m4a|wav)$/,function(filename) {
+			fileScanner(directory,/\.(flac|m4a|mp3|ogg|opus|wav)$/,function(filename) {
 				let albumName = filename.split('\\');
 				const musicName = albumName.pop();
 				albumName     = albumName.join('/');
