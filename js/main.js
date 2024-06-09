@@ -421,7 +421,7 @@ class Music {
 			localMusicData.musicScores = {};
 		}
 
-		ipcRenderer.send('Music-generatePlaylistFromMostLiked', localMusicData.musicScores, 200, 5);
+		ipcRenderer.send('Music-generatePlaylistFromMostLiked', localMusicData.musicScores, 200, 50); // 200 = music amount, 50 = amount of random music in the total (not in the "most liked")
 	}
 }
 window.addEventListener('load', Music.init);
